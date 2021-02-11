@@ -41,13 +41,26 @@ class HTTPClient(object):
         return None
 
     def get_code(self, data):
-        return None
+        first_line = data.split("\n")
+        first_line_split = first_line[0].split()
+        return int(first_line_split[1])
 
-    def get_headers(self,data):
-        return None
+    def parse_url(self, url):
+        o = urllib.parse.urlparse(url)
+        # check if path is empty
+        path = o.path 
+        if not o.path:
+            path = "/"
+        # check to see if there is a port specified
+        port = o.port
+        if not port:
+            port = 80
+        return path, port, o
 
     def get_body(self, data):
-        return None
+        print(data)
+        split = data.split("\r\n\r\n")
+        return(split[1])
     
     def sendall(self, data):
         self.socket.sendall(data.encode('utf-8'))
@@ -68,13 +81,36 @@ class HTTPClient(object):
         return buffer.decode('utf-8')
 
     def GET(self, url, args=None):
-        code = 500
-        body = ""
+        path,port,o = self.parse_url(url)
+        # establish connection
+        self.connect(o.hostname, port) 
+        # create GET request   
+        req = f"GET {path} HTTP/1.1\r\nHost: {o.hostname}\r\nAccept: */*\r\nConnection: Closed\r\n\r\n"
+        self.sendall(req)
+        response = self.recvall(self.socket)
+        code = self.get_code(response)
+        body = self.get_body(response)
+        self.socket.close()
         return HTTPResponse(code, body)
 
     def POST(self, url, args=None):
-        code = 500
-        body = ""
+        content = "Content-Type: application/x-www-form-urlencoded"
+        path,port,o = self.parse_url(url)
+        # establish connection
+        self.connect(o.hostname, port)
+        req = ""
+        if not args:
+            req = f"POST {path} HTTP/1.1\r\nHost: {o.hostname}\r\nAccept: */*\r\nConnection: Closed\r\nContent-Length: {str(0)}\r\n{content}\r\n\r\n"
+        else:
+            req_body = urllib.parse.urlencode(args,doseq=True)
+            print(req_body)
+            size = str(len(req_body))
+            req = f"POST {path} HTTP/1.1\r\nHost: {o.hostname}\r\nAccept: */*\r\nConnection: Closed\r\nContent-Length: {size}\r\n{content}\r\n\r\n{req_body}" 
+        self.sendall(req)
+        response = self.recvall(self.socket)
+        self.socket.close()
+        code = self.get_code(response)
+        body = self.get_body(response)
         return HTTPResponse(code, body)
 
     def command(self, url, command="GET", args=None):
