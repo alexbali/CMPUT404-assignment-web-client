@@ -40,11 +40,19 @@ class HTTPClient(object):
         self.socket.connect((host, port))
         return None
 
+    """
+    Arguments: this function takes a variable called data which is the response returned from either a GET or POST request
+    Return: the status code as an integer
+    """
     def get_code(self, data):
         first_line = data.split("\n")
         first_line_split = first_line[0].split()
         return int(first_line_split[1])
 
+    """
+    Arguments: this function takes a variable called url which is the url being used
+    Return: the path, port number, object o of urllib.parse
+    """
     def parse_url(self, url):
         o = urllib.parse.urlparse(url)
         # check if path is empty
@@ -57,7 +65,12 @@ class HTTPClient(object):
             port = 80
         return path, port, o
 
+    """
+    Arguments: this function takes a variable called data which is the response returned from either a GET or POST request
+    Return: the body of the response
+    """
     def get_body(self, data):
+        # print result of GET or POST to stdout
         print(data)
         split = data.split("\r\n\r\n")
         return(split[1])
@@ -80,11 +93,14 @@ class HTTPClient(object):
                 done = not part
         return buffer.decode('utf-8')
 
+    """
+    Arguments: this function takes a variable called url and any arguments present in the url
+    Return: the HTTP response of the GET request
+    GET Format: GET /path HTTP/1.1, Host, Accept, Connection
+    """
     def GET(self, url, args=None):
         path,port,o = self.parse_url(url)
-        # establish connection
-        self.connect(o.hostname, port) 
-        # create GET request   
+        self.connect(o.hostname, port)    
         req = f"GET {path} HTTP/1.1\r\nHost: {o.hostname}\r\nAccept: */*\r\nConnection: Closed\r\n\r\n"
         self.sendall(req)
         response = self.recvall(self.socket)
@@ -93,15 +109,21 @@ class HTTPClient(object):
         self.socket.close()
         return HTTPResponse(code, body)
 
+    """
+    Arguments: this function takes a variable called url and any arugments for the url
+    Return: the HTTP response of the POST request
+    POST Format: POST /path HTTP/1.1, HOST, Connection, Content-Length, Content
+    """
     def POST(self, url, args=None):
         content = "Content-Type: application/x-www-form-urlencoded"
         path,port,o = self.parse_url(url)
-        # establish connection
         self.connect(o.hostname, port)
         req = ""
+        # check if the post request will need a body sent with it
         if not args:
             req = f"POST {path} HTTP/1.1\r\nHost: {o.hostname}\r\nAccept: */*\r\nConnection: Closed\r\nContent-Length: {str(0)}\r\n{content}\r\n\r\n"
         else:
+            # convert dictionary into query string
             req_body = urllib.parse.urlencode(args,doseq=True)
             print(req_body)
             size = str(len(req_body))
